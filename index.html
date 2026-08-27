@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Emotional Dynamics Simulator</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background: #03070b;
+    color: #e6edf3;
+    font-family: Consolas, Monaco, monospace;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+
+    background:
+        linear-gradient(rgba(88,166,255,.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(88,166,255,.045) 1px, transparent 1px);
+
+    background-size: 35px 35px;
+    animation: gridMove 12s linear infinite;
+}
+
+@keyframes gridMove {
+    from { background-position: 0 0; }
+    to { background-position: 35px 35px; }
+}
+
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 20;
+
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(255,255,255,.018),
+        rgba(255,255,255,.018) 1px,
+        transparent 1px,
+        transparent 4px
+    );
+}
+
+.container {
+    width: min(920px, 94%);
+    margin: auto;
+    padding: 30px 0 60px;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.system {
+    color: #58a6ff;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-shadow: 0 0 10px #58a6ff;
+}
+
+h1 {
+    margin: 10px 0;
+    font-size: clamp(26px, 7vw, 45px);
+    letter-spacing: 3px;
+
+    text-shadow:
+        0 0 8px rgba(88,166,255,.7),
+        0 0 25px rgba(88,166,255,.3);
+}
+
+.subtitle {
+    color: #748194;
+    font-size: 12px;
+}
+
+.status {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 17px;
+}
+
+.status span {
+    padding: 6px 11px;
+    border: 1px solid #263545;
+    border-radius: 20px;
+    background: rgba(7,12,18,.8);
+    font-size: 10px;
+}
+
+.ready {
+    color: #7ee787;
+}
+
+.card {
+    position: relative;
+    overflow: hidden;
+
+    background: rgba(8,14,21,.88);
+    border: 1px solid #233142;
+    border-radius: 16px;
+
+    padding: 20px;
+    margin-top: 15px;
+
+    box-shadow:
+        0 0 30px rgba(0,0,0,.4),
+        inset 0 0 25px rgba(88,166,255,.025);
+}
+
+.card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 1px;
+
+    background: #58a6ff;
+    animation: scan 5s linear infinite;
+}
+
+@keyframes scan {
+    from { left: -60%; }
+    to { left: 120%; }
+}
+
+.formula {
+    opacity: .35;
+    text-align: center;
+    font-size: clamp(18px, 5vw, 29px);
+    padding: 15px 5px;
+    border-bottom: 1px solid #17212d;
+    transition: .4s;
+}
+
+.formula:last-child {
+    border-bottom: none;
+}
+
+.formula.active {
+    opacity: 1;
+    color: #58a6ff;
+
+    text-shadow:
+        0 0 8px rgba(88,166,255,.8),
+        0 0 20px rgba(88,166,255,.35);
+
+    transform: scale(1.02);
+}
+
+.variables {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+}
+
+.variable {
+    background: #050a10;
+    border: 1px solid #1e2b39;
+    border-radius: 10px;
+    padding: 13px;
+    transition: .3s;
+}
+
+.variable:hover {
+    border-color: #58a6ff;
+    box-shadow: 0 0 15px rgba(88,166,255,.15);
+    transform: translateY(-2px);
+}
+
+.variable b {
+    font-size: 20px;
+    color: #58a6ff;
+}
+
+.variable p {
+    margin: 5px 0 0;
+    color: #758194;
+    font-size: 10px;
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+}
+
+button {
+    font-family: inherit;
+    color: #cdd6e0;
+    background: #0b1119;
+
+    border: 1px solid #283646;
+    border-radius: 9px;
+
+    padding: 11px 15px;
+
+    cursor: pointer;
+    transition: .25s;
+}
+
+button:hover {
+    border-color: #58a6ff;
+    box-shadow: 0 0 12px rgba(88,166,255,.18);
+}
+
+button.active {
+    color: #58a6ff;
+    border-color: #58a6ff;
+
+    box-shadow:
+        0 0 10px rgba(88,166,255,.2),
+        inset 0 0 10px rgba(88,166,255,.05);
+}
+
+.run {
+    color: #7ee787;
+    border-color: #238636;
+}
+
+.progress {
+    height: 6px;
+    margin-top: 18px;
+
+    background: #111923;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+
+    background: #58a6ff;
+
+    box-shadow:
+        0 0 10px #58a6ff,
+        0 0 20px rgba(88,166,255,.5);
+
+    transition: width .5s;
+}
+
+.terminal {
+    min-height: 300px;
+
+    background: #020406;
+
+    border: 1px solid #1d2936;
+    border-radius: 12px;
+
+    padding: 17px;
+
+    color: #9fb0c2;
+
+    font-size: 12px;
+    line-height: 1.8;
+
+    white-space: pre-line;
+
+    box-shadow:
+        inset 0 0 25px rgba(0,0,0,.7);
+}
+
+.green {
+    color: #7ee787;
+}
+
+.blue {
+    color: #58a6ff;
+}
+
+.red {
+    color: #ff7b72;
+}
+
+.final {
+    margin-top: 15px;
+
+    padding: 15px;
+
+    text-align: center;
+
+    border: 1px solid #2ea043;
+    border-radius: 10px;
+
+    color: #7ee787;
+
+    box-shadow:
+        0 0 18px rgba(46,160,67,.12);
+
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%,100% {
+        box-shadow: 0 0 10px rgba(46,160,67,.08);
+    }
+
+    50% {
+        box-shadow: 0 0 25px rgba(46,160,67,.22);
+    }
+}
+
+.hidden {
+    display: none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+
+<div class="system">
+CONCEPTUAL BEHAVIORAL SYSTEM
+</div>
+
+<h1>
+EMOTIONAL DYNAMICS
+</h1>
+
+<div class="subtitle">
+Reciprocal Ego • Initiation • Communication
+</div>
+
+<div class="status">
+
+<span class="ready">● SYSTEM READY</span>
+<span>MODEL v3.2</span>
+<span>LOCAL EXECUTION</span>
+
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="title">
+CORE EQUATIONS
+</div>
+
+<div class="formula" id="f1">
+G₁ + G₂ → E↑ → C↓
+</div>
+
+<div class="formula" id="f2">
+lim(G₁, G₂ → ∞) P(I) → 0
+</div>
+
+<div class="formula" id="f3">
+I = 1 → C↑↑
+</div>
+
+<div class="formula" id="f4">
+∴ G↑ → C↓, I = 1 → C↑
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="title">
+VARIABLE DICTIONARY
+</div>
+
+<div class="variables">
+
+<div class="variable">
+<b>G₁</b>
+<p>Ego pihak pertama</p>
+</div>
+
+<div class="variable">
+<b>G₂</b>
+<p>Ego pihak kedua</p>
+</div>
+
+<div class="variable">
+<b>E</b>
+<p>Emotional pressure</p>
+</div>
+
+<div class="variable">
+<b>C</b>
+<p>Communication</p>
+</div>
+
+<div class="variable">
+<b>I</b>
+<p>Initiation</p>
+</div>
+
+<div class="variable">
+<b>P(I)</b>
+<p>Probability of initiation</p>
+</div>
+
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="title">
+INTERPRETATION MODE
+</div>
+
+<div class="controls">
+
+<button
+id="scientific"
+class="active"
+onclick="scientificMode()">
+🔬 SCIENTIFIC
+</button>
+
+<button
+id="konoha"
+onclick="konohaMode()">
+🗿 HUMAN / KONOHA
+</button>
+
+<button
+class="run"
+onclick="runModel()">
+▶ RUN MODEL
+</button>
+
+</div>
+
+<div class="progress">
+<div id="progressBar" class="progress-bar"></div>
+</div>
+
+</div>
+
+
+<div class="card">
+
+<div class="title">
+SYSTEM OUTPUT
+</div>
+
+<div id="terminal" class="terminal">
+<span class="blue">SYSTEM READY...</span>
+
+Awaiting model execution.
+
+Select an interpretation mode
+and press RUN MODEL.
+</div>
+
+<div id="final" class="final hidden">
+MODEL COMPLETE
+</div>
+
+</div>
+
+</div>
+
+
+<script>
+
+let mode = "scientific";
+
+
+function scientificMode() {
+
+    mode = "scientific";
+
+    document
+        .getElementById("scientific")
+        .classList.add("active");
+
+    document
+        .getElementById("konoha")
+        .classList.remove("active");
+
+}
+
+
+function konohaMode() {
+
+    mode = "konoha";
+
+    document
+        .getElementById("konoha")
+        .classList.add("active");
+
+    document
+        .getElementById("scientific")
+        .classList.remove("active");
+
+}
+
+
+function sleep(ms) {
+
+    return new Promise(resolve =>
+        setTimeout(resolve, ms)
+    );
+
+}
+
+
+async function runModel() {
+
+    const terminal =
+        document.getElementById("terminal");
+
+    const progress =
+        document.getElementById("progressBar");
+
+    const final =
+        document.getElementById("final");
+
+    const formulas = [
+
+        document.getElementById("f1"),
+        document.getElementById("f2"),
+        document.getElementById("f3"),
+        document.getElementById("f4")
+
+    ];
+
+
+    terminal.innerHTML = "";
+
+    final.classList.add("hidden");
+
+    formulas.forEach(f =>
+        f.classList.remove("active")
+    );
+
+    progress.style.width = "0%";
+
+
+    const scientificText = [
+
+`<span class="blue">INITIALIZING MODEL...</span>
+
+Loading conceptual variables...
+
+G₁ = Ego of party one
+G₂ = Ego of party two
+E  = Emotional pressure
+C  = Communication
+I  = Initiation`,
+
+`<span class="blue">EQUATION 01</span>
+
+G₁ + G₂ → E↑ → C↓
+
+Mutual ego increases emotional pressure.
+
+As emotional pressure rises,
+communication decreases.`,
+
+`<span class="blue">EQUATION 02</span>
+
+lim(G₁, G₂ → ∞) P(I) → 0
+
+As mutual ego increases,
+the probability of either party
+initiating interaction approaches zero.`,
+
+`<span class="blue">EQUATION 03</span>
+
+I = 1 → C↑↑
+
+Once one party initiates interaction,
+communication may increase significantly.`,
+
+`<span class="green">FINAL ANALYSIS</span>
+
+G↑ → C↓, I = 1 → C↑
+
+Increasing mutual ego
+→ decreasing communication.
+
+One initiation
+→ communication rises again.`
+
+    ];
+
+
+    const konohaText = [
+
+`<span class="blue">SYSTEM NYALAIN...</span>
+
+Oke, sini.
+
+Gue jelasin pakai bahasa manusia,
+karena kalau cuma dikasih rumus,
+lu paling lihat simbolnya terus bilang:
+
+"Wah keren."
+
+Lima detik kemudian:
+
+"Ini maksudnya apaan?"
+
+YA ANJIR. 😭
+
+Makanya sekarang kita bedah satu-satu.
+Dan tolong jangan dibuat lebih ribet
+daripada yang sebenarnya.`,
+
+`<span class="blue">RUMUS 01</span>
+
+G₁ + G₂ → E↑ → C↓
+
+G₁ itu gengsi lu.
+G₂ itu gengsi dia.
+
+Nah masalahnya,
+gengsi kalian berdua dijumlahin.
+
+Lu gengsi.
+Dia gengsi.
+
+Lu sebenarnya pengen ngobrol,
+tapi dalam kepala lu:
+
+"Kenapa gue yang mulai?"
+
+Dia mungkin juga pengen ngobrol,
+tapi dalam kepalanya:
+
+"Kenapa gue yang mulai?"
+
+NAH.
+
+UDAH.
+
+KELAR. 🗿
+
+Dua-duanya punya HP.
+Dua-duanya bisa ngetik.
+Dua-duanya bisa buka chat.
+
+Tapi nggak ada yang mau mulai.
+
+Terus karena nggak ada yang mulai,
+tekanan emosional malah makin naik.
+
+Makin kepikiran.
+Makin penasaran.
+Makin pengen tahu.
+
+Tapi komunikasi?
+
+MALAH TURUN.
+
+Terus lu bingung:
+
+"Kenapa jadi jauh ya?"
+
+YA KARENA LU DIEM, WOI. 😭
+
+Lu buka chat,
+lihat namanya,
+mau ngetik sesuatu,
+terus mikir:
+
+"Ah, jangan deh."
+
+Dia mungkin melakukan hal yang sama.
+
+Akhirnya dua manusia yang sebenarnya
+masih bisa ngobrol malah sibuk
+nunggu satu sama lain.
+
+LU NUNGGU DIA.
+DIA NUNGGU LU.
+
+TERUS MAU NUNGGU SAMPAI KAPAN? 🗿`,
+
+`<span class="blue">RUMUS 02</span>
+
+lim(G₁, G₂ → ∞) P(I) → 0
+
+Nah ini bagian yang bikin kesel.
+
+Semakin tinggi gengsi kalian,
+semakin kecil kemungkinan ada yang
+mau mulai duluan.
+
+Bukan berarti mustahil.
+
+Tapi kemungkinannya makin kecil.
+
+Karena masing-masing mulai bikin
+aturan sendiri:
+
+"Kalau dia mau ngobrol,
+dia pasti nyari gue."
+
+Terus pihak satunya:
+
+"Kalau dia masih peduli,
+harusnya dia duluan."
+
+LAH.
+
+LU NUNGGU DIA.
+
+DIA NUNGGU LU.
+
+JADI SIAPA YANG MAU MULAI, ANJIR? 😭
+
+Ini bukan fitur otomatis.
+
+Chat nggak bakal muncul sendiri
+cuma karena kalian sama-sama mikirin
+satu sama lain.
+
+HP lu juga bukan cenayang.
+
+Nggak ada sistem yang bilang:
+
+"Kedua pihak sedang gengsi.
+Memulai percakapan secara otomatis."
+
+NGGAK ADA. 🗿
+
+Yang ada cuma dua orang
+sama-sama keras kepala
+dan sama-sama berharap pihak lain
+yang bergerak duluan.
+
+Terus waktu lewat.
+
+Hari lewat.
+
+Minggu lewat.
+
+Komunikasi makin turun.
+
+Akhirnya malah jadi asing.
+
+Terus salah satu bilang:
+
+"Kok kita jadi asing ya?"
+
+YA LU BERDUA YANG BIKIN. 😭`,
+
+`<span class="blue">RUMUS 03</span>
+
+I = 1 → C↑↑
+
+Nah.
+
+INI SEBENARNYA GAMPANG BANGET.
+
+I = 1 artinya cuma SATU pihak
+yang akhirnya punya inisiatif.
+
+Satu orang aja.
+
+Nggak perlu dua-duanya tiba-tiba
+jadi manusia paling berani sedunia.
+
+Salah satu cukup mulai:
+
+"Eh."
+
+"Lu apa kabar?"
+
+"Masih inget gue?"
+
+Bebas.
+
+Yang penting ada yang mulai.
+
+Begitu satu orang mulai,
+komunikasi yang tadinya mandek
+bisa bergerak lagi.
+
+Dan ini justru bagian paling ngeselin
+dari semuanya.
+
+Karena ternyata masalahnya dari awal
+belum tentu kalian nggak bisa ngobrol.
+
+Bukan nggak punya topik.
+
+Bukan nggak punya kesempatan.
+
+Bahkan bukan karena nggak peduli.
+
+BISA AJA KALIAN CUMA SAMA-SAMA
+NUNGGU.
+
+Dan kalau dua-duanya terus nunggu,
+ya hasilnya begini:
+
+Lu: "Dia dulu."
+
+Dia: "Lu dulu."
+
+Lu: "Ogah."
+
+Dia: "Yaudah."
+
+YA UDAH APANYA WOI. 😭🗿
+
+INI BUKAN TURN-BASED GAME.
+
+Nggak ada giliran otomatis.
+
+Nggak ada wasit yang bakal datang
+buat bilang:
+
+"Baik, sekarang giliran Anda
+mengirim pesan."
+
+NGGAK ADA. 😭`,
+
+`<span class="green">FINAL ANALYSIS</span>
+
+G↑ → C↓, I = 1 → C↑
+
+Jadi kalau seluruh rumus ini
+diterjemahkan ke bahasa manusia:
+
+Gengsi naik
+→ komunikasi turun.
+
+Dua-duanya gengsi
+→ makin lama makin susah ada
+yang mulai.
+
+Satu orang mulai
+→ komunikasi bisa naik lagi.
+
+SELESAI.
+
+Rumusnya panjang.
+
+Simbolnya kelihatan ribet.
+
+Ada limit.
+Ada probabilitas.
+Ada pangkat.
+Ada panah segala macam.
+
+Tapi ujung-ujungnya masalahnya:
+
+"Siapa yang mau chat duluan?"
+
+ANJIR. 😭
+
+Dan jangan salah paham.
+
+"I = 1" bukan berarti satu orang
+harus selalu mengalah.
+
+Bukan.
+
+Maksudnya cuma satu hal:
+
+KALAU NGGAK ADA YANG MULAI,
+YA NGGAK ADA YANG TERJADI.
+
+Lu mau nunggu.
+Dia mau nunggu.
+
+Silakan.
+
+Tapi jangan kaget kalau komunikasi
+akhirnya turun sampai hampir nggak ada.
+
+Karena gengsi nggak pernah
+mengirim pesan buat lu.
+
+Gengsi cuma bisa bikin lu
+ngetik pesan,
+terus menghapusnya lagi. 🗿
+
+Jadi kalau suatu hari lu sadar:
+
+"Sebenernya gue pengen ngobrol."
+
+Ya...
+
+LU TAU SENDIRI LAH. 😭
+
+Karena kalau dua-duanya terus bilang:
+
+"Dia dulu."
+
+"Enggak, lu dulu."
+
+"Ogah."
+
+"Yaudah."
+
+Maka secara matematis,
+secara logis,
+dan secara paling manusiawi:
+
+KALIAN CUMA SAMA-SAMA GENGSI.
+
+TAMAT.
+
+SYSTEM CONCLUSION:
+
+Gengsi ↑
+Komunikasi ↓
+
+Inisiatif = 1
+Komunikasi ↑↑
+
+Dan sekarang tolong jangan
+bikin masalah sesederhana ini
+jadi season 4. 🗿😭`
+
+    ];
+
+
+    const text =
+        mode === "scientific"
+        ? scientificText
+        : konohaText;
+
+
+    for (let i = 0; i < text.length; i++) {
+
+        terminal.innerHTML +=
+            "\n" + text[i] + "\n";
+
+        terminal.scrollTop =
+            terminal.scrollHeight;
+
+        progress.style.width =
+            ((i + 1) / text.length * 100) + "%";
+
+
+        if (formulas[i]) {
+
+            formulas[i].classList.add("active");
+
+            await sleep(500);
+
+            formulas[i].classList.remove("active");
+
+        }
+
+        await sleep(650);
+
+    }
+
+
+    final.classList.remove("hidden");
+
+}
+
+</script>
+
+</body>
+  </html>
